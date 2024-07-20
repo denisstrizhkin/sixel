@@ -60,7 +60,7 @@ func sixel_encode(img image.Image, w io.Writer) {
 	w.Write([]byte(header))
 
 	pixels := colors_to_pixels(img)
-	palette := sixel.Clusterize(pixels, 10, 1000)
+	palette := sixel.Clusterize(pixels, 256, 1)
 	//save_palette(palette)
 
 	scale := 100.0 / 255.0
@@ -71,10 +71,11 @@ func sixel_encode(img image.Image, w io.Writer) {
 		w.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, r, g, b)))
 	}
 
-	n_s := width / 6
+	//n_s := width / 6
 	for i := range height {
 		for j := range width {
-			p_id := pixels[i*width+(j%n_s)*6+(j%6)].Cluster
+			//p_id := pixels[i*width+(j%n_s)*6+(j%6)].Cluster
+			p_id := pixels[i*width+j].Cluster
 			c := rune((1 << (i % 6)) + 63)
 			w.Write([]byte(fmt.Sprintf("#%d%c", p_id, c)))
 		}
