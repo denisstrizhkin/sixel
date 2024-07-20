@@ -13,22 +13,44 @@ import (
 	"github.com/denisstrizhkin/sixel"
 )
 
-func get_colors_slice(img image.Image) []color.RGBA {
+func colors_to_pixels(img image.Image) []sixel.Pixel {
 	w := img.Bounds().Dx()
 	h := img.Bounds().Dy()
-	colors := make([]color.RGBA, w*h)
-
-	for i := 0; i < w; i++ {
-		for j := 0; j < h; j++ {
+	pixels := make([]sixel.Pixel, 0, w*h)
+	for i := range w {
+		for j := range h {
 			r, g, b, a := img.At(i, j).RGBA()
-			colors[i*w+j].R = uint8(r)
-			colors[i*w+j].G = uint8(g)
-			colors[i*w+j].B = uint8(b)
-			colors[i*w+j].A = uint8(a)
+			pixels = append(pixels, sixel.Pixel{r >> 8, g >> 8, b >> 8, a >> 8, -1})
+		}
+	}
+	return pixels
+}
+
+func save_palette(p []sixel.Pixel) {
+	w := 100
+	h := 100
+	fW := w * len(p)
+
+	upLeft := image.Point{0, 0}
+	lowRight := image.Point{fW, h}
+	img := image.NewRGBA(image.Rectangle{upLeft, lowRight})
+
+	log.Println(p)
+	for i := range h {
+		for j := range fW {
+			p_i := j / w
+			c := color.RGBA{
+				uint8(p[p_i].R),
+				uint8(p[p_i].G),
+				uint8(p[p_i].B),
+				255,
+			}
+			img.Set(j, i, c)
 		}
 	}
 
-	return colors
+	f, _ := os.Create("palette.png")
+	png.Encode(f, img)
 }
 
 func sixel_encode(img image.Image, w io.Writer) {
@@ -37,9 +59,13 @@ func sixel_encode(img image.Image, w io.Writer) {
 	header := fmt.Sprintf("\x1bPq1;1;%d;%d", width, height)
 	w.Write([]byte(header))
 
-	colors := get_colors_slice(img)
-	km := sixel.NewKMeans(256)
-	km.Clusterize(colors)
+	pixels := colors_to_pixels(img)
+	palette := sixel.Clusterize(pixels, 10, 1000)
+	//save_palette(palette)
+
+	for i, p := range palette {
+		w.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, p.R, p.G, p.B)))
+	}
 
 	w.Write([]byte("\x1b\\"))
 }
