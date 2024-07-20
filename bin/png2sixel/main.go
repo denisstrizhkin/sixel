@@ -17,9 +17,9 @@ func colors_to_pixels(img image.Image) []sixel.Pixel {
 	w := img.Bounds().Dx()
 	h := img.Bounds().Dy()
 	pixels := make([]sixel.Pixel, 0, w*h)
-	for i := range w {
-		for j := range h {
-			r, g, b, a := img.At(i, j).RGBA()
+	for i := range h {
+		for j := range w {
+			r, g, b, a := img.At(j, i).RGBA()
 			pixels = append(pixels, sixel.Pixel{r >> 8, g >> 8, b >> 8, a >> 8, -1})
 		}
 	}
@@ -56,15 +56,33 @@ func save_palette(p []sixel.Pixel) {
 func sixel_encode(img image.Image, w io.Writer) {
 	width := img.Bounds().Dx()
 	height := img.Bounds().Dy()
-	header := fmt.Sprintf("\x1bPq1;1;%d;%d", width, height)
+	header := fmt.Sprintf("\x1bPq\"1;1;%d;%d", width, height)
 	w.Write([]byte(header))
 
 	pixels := colors_to_pixels(img)
 	palette := sixel.Clusterize(pixels, 10, 1000)
 	//save_palette(palette)
 
+	scale := 100.0 / 255.0
 	for i, p := range palette {
-		w.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, p.R, p.G, p.B)))
+		r := int(scale * float64(p.R))
+		g := int(scale * float64(p.G))
+		b := int(scale * float64(p.B))
+		w.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, r, g, b)))
+	}
+
+	n_s := width / 6
+	for i := range height {
+		for j := range width {
+			p_id := pixels[i*width+(j%n_s)*6+(j%6)].Cluster
+			c := rune((1 << (i % 6)) + 63)
+			w.Write([]byte(fmt.Sprintf("#%d%c", p_id, c)))
+		}
+		if i%6 == 5 {
+			w.Write([]byte("-"))
+		} else {
+			w.Write([]byte("$"))
+		}
 	}
 
 	w.Write([]byte("\x1b\\"))
