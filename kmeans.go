@@ -1,4 +1,4 @@
-package main
+package sixel
 
 import (
 	"image/color"
@@ -44,7 +44,7 @@ type KMeans struct {
 	rnd   *rand.Rand
 }
 
-func (km *KMeans) NewKMeans(k int) *KMeans {
+func NewKMeans(k int) *KMeans {
 	return &KMeans{
 		k:     k,
 		cntrs: make([]XYZ, k),

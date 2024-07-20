@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/denisstrizhkin/sixel"
 )
 
 func get_colors_slice(img image.Image) []color.RGBA {
@@ -36,8 +38,8 @@ func sixel_encode(img image.Image, w io.Writer) {
 	w.Write([]byte(header))
 
 	colors := get_colors_slice(img)
-	km := NewKMeans(256)
-	km.Cluterize(colors)
+	km := sixel.NewKMeans(256)
+	km.Clusterize(colors)
 
 	w.Write([]byte("\x1b\\"))
 }
