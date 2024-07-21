@@ -11,6 +11,7 @@ type Pixel struct {
 	G uint32
 	B uint32
 	A uint32
+	W uint32
 	Cluster int
 }
 
@@ -36,47 +37,63 @@ func DistArgMin(cntrs []Pixel, c Pixel) int {
 
 func CompareCntrs(a []Pixel, b []Pixel) bool {
 	for i := range a {
-		if a[i] != b[i] {
+		if a[i].R != b[i].R || a[i].G != b[i].G || a[i].B != b[i].B  {
 			return false
 		}
 	}
 	return true
 }
 
-func Clusterize(pixels []Pixel, k int,  epochs int) []Pixel {
+func WeightPixels(pixels []Pixel) (map[Pixel]uint32, []Pixel) {
+	wmap := make(map[Pixel]uint32)
+	for _, p := range pixels {
+		wmap[p]++
+	}
+	weighted := make([]Pixel, 0, len(wmap))
+	for p := range wmap {
+		weighted = append(weighted, p)
+	}
+	log.Println(len(pixels), len(weighted))
+	return wmap, weighted
+}
+
+func Clusterize(pixels []Pixel, k int,  epochs int) ([]Pixel, map[Pixel]int) {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	wmap, weighted := WeightPixels(pixels)
+	clusterMap := make(map[Pixel]int)
+	var new_cntrs []Pixel
+
 	cntrs := make([]Pixel, 0, k)
 	for range k {
-		cntrs = append(cntrs, pixels[rnd.Intn(len(pixels))])
-	}
-	
-	var new_cntrs []Pixel
+		cntrs = append(cntrs, weighted[rnd.Intn(len(weighted))])
+	}	
+
 	for range epochs {
 		new_cntrs = make([]Pixel, k)
-		for i, pixel := range pixels {
+		for pixel, W := range wmap {
 			min_i := DistArgMin(cntrs, pixel)
-			pixels[i].Cluster = min_i
-			new_cntrs[min_i].R += pixel.R
-			new_cntrs[min_i].G += pixel.G
-			new_cntrs[min_i].B += pixel.B
-			new_cntrs[min_i].A++	
+			clusterMap[pixel] = min_i
+			new_cntrs[min_i].R += pixel.R * W
+			new_cntrs[min_i].G += pixel.G * W
+			new_cntrs[min_i].B += pixel.B * W
+			new_cntrs[min_i].W += W
 		}
 
 		for i := range new_cntrs {
-			if new_cntrs[i].A == 0 {
+			if new_cntrs[i].W == 0 {
 				continue
 			}
-			new_cntrs[i].R /= new_cntrs[i].A
-			new_cntrs[i].G /= new_cntrs[i].A
-			new_cntrs[i].B /= new_cntrs[i].A
+			new_cntrs[i].R /= new_cntrs[i].W
+			new_cntrs[i].G /= new_cntrs[i].W
+			new_cntrs[i].B /= new_cntrs[i].W
 		}
 
 		if CompareCntrs(cntrs, new_cntrs) {
 			log.Println("converged")
-			return cntrs;
+			return cntrs, clusterMap;
 		}
 		cntrs = new_cntrs
 	}
 
-	return cntrs;
+	return cntrs, clusterMap;
 }
