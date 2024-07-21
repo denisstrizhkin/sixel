@@ -61,37 +61,39 @@ func save_palette(p []sixel.Pixel) {
 }
 
 func sixel_encode(img image.Image, w io.Writer) {
+	bw := bufio.NewWriter(w)
+	defer bw.Flush()
+
 	width := img.Bounds().Dx()
 	height := img.Bounds().Dy()
 	header := fmt.Sprintf("\x1bPq\"1;1;%d;%d", width, height)
-	w.Write([]byte(header))
+	bw.Write([]byte(header))
 
 	pixels := colors_to_pixels(img)
 	palette, clusterMap := sixel.Clusterize(pixels, 256, 10)
 	//save_palette(palette)
 
-	scale := 100.0 / 255.0
 	for i, p := range palette {
-		r := int(scale * float64(p.R))
-		g := int(scale * float64(p.G))
-		b := int(scale * float64(p.B))
-		w.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, r, g, b)))
+		r := p.R * 100 / 255
+		g := p.G * 100 / 255
+		b := p.B * 100 / 255
+		bw.Write([]byte(fmt.Sprintf("#%d;2;%d;%d;%d", i, r, g, b)))
 	}
 
 	for i := range height {
 		for j := range width {
 			p_id := clusterMap[pixels[i*width+j]]
 			c := rune((1 << (i % 6)) + 63)
-			w.Write([]byte(fmt.Sprintf("#%d%c", p_id, c)))
+			bw.Write([]byte(fmt.Sprintf("#%d%c", p_id, c)))
 		}
 		if i%6 == 5 {
-			w.Write([]byte("-"))
+			bw.Write([]byte("-"))
 		} else {
-			w.Write([]byte("$"))
+			bw.Write([]byte("$"))
 		}
 	}
 
-	w.Write([]byte("\x1b\\"))
+	bw.Write([]byte("\x1b\\"))
 }
 
 func main() {
@@ -112,7 +114,5 @@ func main() {
 		log.Fatalln("can't decode png image:", err)
 	}
 
-	bw := bufio.NewWriter(os.Stdout)
-	defer bw.Flush()
-	sixel_encode(img, bw)
+	sixel_encode(img, os.Stdout)
 }
