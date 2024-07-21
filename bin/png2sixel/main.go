@@ -70,7 +70,7 @@ func sixel_encode(img image.Image, w io.Writer) {
 	bw.Write([]byte(header))
 
 	pixels := colors_to_pixels(img)
-	palette, clusterMap := sixel.Clusterize(pixels, 256, 10)
+	palette, clusterMap := sixel.Clusterize(pixels, 256, 100)
 	//save_palette(palette)
 
 	for i, p := range palette {

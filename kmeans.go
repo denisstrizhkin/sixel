@@ -1,17 +1,17 @@
 package sixel
 
 import (
+	"log"
 	"math/rand"
 	"time"
-	"log"
 )
 
 type Pixel struct {
-	R uint32
-	G uint32
-	B uint32
-	A uint32
-	W uint32
+	R       uint32
+	G       uint32
+	B       uint32
+	A       uint32
+	W       uint32
 	Cluster int
 }
 
@@ -37,7 +37,7 @@ func DistArgMin(cntrs []Pixel, c Pixel) int {
 
 func CompareCntrs(a []Pixel, b []Pixel) bool {
 	for i := range a {
-		if a[i].R != b[i].R || a[i].G != b[i].G || a[i].B != b[i].B  {
+		if a[i].R != b[i].R || a[i].G != b[i].G || a[i].B != b[i].B {
 			return false
 		}
 	}
@@ -57,19 +57,22 @@ func WeightPixels(pixels []Pixel) (map[Pixel]uint32, []Pixel) {
 	return wmap, weighted
 }
 
-func Clusterize(pixels []Pixel, k int,  epochs int) ([]Pixel, map[Pixel]int) {
+func Clusterize(pixels []Pixel, k int, epochs int) ([]Pixel, map[Pixel]int) {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	wmap, weighted := WeightPixels(pixels)
 	clusterMap := make(map[Pixel]int)
-	var new_cntrs []Pixel
 
+	new_cntrs := make([]Pixel, k)
 	cntrs := make([]Pixel, 0, k)
 	for range k {
 		cntrs = append(cntrs, weighted[rnd.Intn(len(weighted))])
-	}	
+	}
 
 	for range epochs {
-		new_cntrs = make([]Pixel, k)
+		for i := range new_cntrs {
+			new_cntrs[i] = Pixel{}
+		}
+
 		for pixel, W := range wmap {
 			min_i := DistArgMin(cntrs, pixel)
 			clusterMap[pixel] = min_i
@@ -90,10 +93,10 @@ func Clusterize(pixels []Pixel, k int,  epochs int) ([]Pixel, map[Pixel]int) {
 
 		if CompareCntrs(cntrs, new_cntrs) {
 			log.Println("converged")
-			return cntrs, clusterMap;
+			return cntrs, clusterMap
 		}
-		cntrs = new_cntrs
+		copy(cntrs, new_cntrs)
 	}
 
-	return cntrs, clusterMap;
+	return cntrs, clusterMap
 }
